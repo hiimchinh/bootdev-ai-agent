@@ -4,6 +4,7 @@ import sys
 from google import genai
 from google.genai import types
 from helper import system_prompt
+from functions.get_files_info import schema_get_files_info
 
 load_dotenv()
 api_key = os.environ.get("GEMINI_API_KEY")
@@ -21,13 +22,23 @@ if not user_prompt:
     print("Usage: python main.py <prompt>")
     sys.exit(1)
 messages = [types.Content(role="user", parts=[types.Part(text=user_prompt)])]
+available_functions = types.Tool(
+    function_declarations=[
+        schema_get_files_info,
+    ]
+)
+
+
 res = client.models.generate_content(
     model="gemini-2.0-flash-001",
     contents=messages,
-    config=types.GenerateContentConfig(system_instruction=system_prompt),
+    config=types.GenerateContentConfig(system_instruction=system_prompt, tools=[available_functions]),
 )
-
-print(res.text)
+if res.function_calls:
+    for function_call_part in res.function_calls:
+        print(f"Calling function: {function_call_part.name}({function_call_part.args})") 
+else:
+    print(res.text)
 
 if is_verbose:
     print(f"User prompt: {user_prompt}")
