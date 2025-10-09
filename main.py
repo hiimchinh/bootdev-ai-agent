@@ -8,6 +8,7 @@ from functions.get_files_info import schema_get_files_info
 from functions.get_file_content import schema_get_file_content
 from functions.run_python import schema_run_python_file
 from functions.write_file import schema_write_file
+from functions.call_function import call_function
 
 load_dotenv()
 api_key = os.environ.get("GEMINI_API_KEY")
@@ -42,7 +43,15 @@ res = client.models.generate_content(
 )
 if res.function_calls:
     for function_call_part in res.function_calls:
-        print(f"Calling function: {function_call_part.name}({function_call_part.args})") 
+        function_call_result = call_function(function_call_part, is_verbose)
+        func_call_response = function_call_result.parts[0].function_response.response
+        if (not func_call_response):
+            raise Exception("Fatal exception. Function call response not found")
+        
+        if is_verbose:
+            print(f"-> {func_call_response}")
+
+
 else:
     print(res.text)
 
