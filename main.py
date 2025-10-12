@@ -25,7 +25,9 @@ is_verbose = "--verbose" in argv
 if not user_prompt:
     print("Usage: python main.py <prompt>")
     sys.exit(1)
-messages = [types.Content(role="user", parts=[types.Part(text=user_prompt)])]
+messages = [
+    types.Content(role="user", parts=[types.Part(text=user_prompt)])
+]
 available_functions = types.Tool(
     function_declarations=[
         schema_get_files_info,
@@ -35,27 +37,29 @@ available_functions = types.Tool(
     ]
 )
 
-
-res = client.models.generate_content(
-    model="gemini-2.0-flash-001",
-    contents=messages,
-    config=types.GenerateContentConfig(system_instruction=system_prompt, tools=[available_functions]),
-)
-if res.function_calls:
-    for function_call_part in res.function_calls:
-        function_call_result = call_function(function_call_part, is_verbose)
-        func_call_response = function_call_result.parts[0].function_response.response
-        if (not func_call_response):
-            raise Exception("Fatal exception. Function call response not found")
+def gen_content(messages):
+    res = client.models.generate_content(
+        model="gemini-2.0-flash-001",
+        contents=messages,
+        config=types.GenerateContentConfig(system_instruction=system_prompt, tools=[available_functions]),
+    )
+    if res.function_calls:
+        for function_call_part in res.function_calls:
+            function_call_result = call_function(function_call_part, is_verbose)
+            func_call_response = function_call_result.parts[0].function_response.response
+            if (not func_call_response):
+                raise Exception("Fatal exception. Function call response not found")
         
-        if is_verbose:
-            print(f"-> {func_call_response}")
+            if is_verbose:
+                print(f"-> {func_call_response}")
+    else:
+        print(res.text)
+
+    if is_verbose:
+        print(f"User prompt: {user_prompt}")
+        print("Prompt tokens: " + str(res.usage_metadata.prompt_token_count))
+        print("Response tokens: " + str(res.usage_metadata.candidates_token_count))
+    return res
 
 
-else:
-    print(res.text)
-
-if is_verbose:
-    print(f"User prompt: {user_prompt}")
-    print("Prompt tokens: " + str(res.usage_metadata.prompt_token_count))
-    print("Response tokens: " + str(res.usage_metadata.candidates_token_count))
+gen_content(messages)
