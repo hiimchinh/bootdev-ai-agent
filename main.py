@@ -50,10 +50,6 @@ def gen_content(messages: list[types.Content]) -> None:
                     system_instruction=system_prompt, tools=[available_functions]
                 ),
             )
-            # if return text break out of the loop
-            if hasattr(res, "text") and res.text:
-                print(res.text)
-                break
 
             if hasattr(res, "candidates") and res.candidates is not None:
                 for candidate in res.candidates:
@@ -61,6 +57,7 @@ def gen_content(messages: list[types.Content]) -> None:
                         messages.append(candidate.content)
 
             if hasattr(res, "function_calls") and res.function_calls:
+                func_responses = []
                 for function_call_part in res.function_calls:
                     function_call_result = call_function(function_call_part, is_verbose)
                     # Defensive: check function_call_result.parts is not None and has expected structure
@@ -75,6 +72,7 @@ def gen_content(messages: list[types.Content]) -> None:
                             "Fatal exception. Function call result parts not found or invalid"
                         )
                     function_response = getattr(parts[0], "function_response", None)
+                    func_responses.append(parts[0])
                     func_call_response = (
                         getattr(function_response, "response", None)
                         if function_response
@@ -85,12 +83,13 @@ def gen_content(messages: list[types.Content]) -> None:
                             "Fatal exception. Function call response not found"
                         )
 
-                    messages.append(types.Content(role="user", parts=parts))
                     if is_verbose:
                         print(f"-> {func_call_response}")
+                messages.append(types.Content(role="user", parts=func_responses))
             else:
                 if hasattr(res, "text"):
-                    print(res.text)
+                    print(f"Final response: {res.text}")
+                    break
 
             if is_verbose:
                 print(f"User prompt: {user_prompt}")
