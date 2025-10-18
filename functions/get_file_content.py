@@ -1,7 +1,8 @@
 import os
 from google.genai import types
 
-def get_file_content(working_directory, file_path):
+
+def get_file_content(working_directory: str, file_path: str) -> str:
     file_full_path = os.path.join(working_directory, file_path)
     file_dir = os.path.abspath(file_full_path)
     working_dir = os.path.abspath(working_directory)
@@ -13,7 +14,7 @@ def get_file_content(working_directory, file_path):
 
     try:
         MAX_CHARS = 10000
-        with open(file_dir, 'r') as f:
+        with open(file_dir, "r") as f:
             file_content = f.read(MAX_CHARS)
             next_char = f.read(1)
             if next_char:
@@ -32,12 +33,11 @@ schema_get_file_content = types.FunctionDeclaration(
         properties={
             "directory": types.Schema(
                 type=types.Type.STRING,
-                description="The directory to get file content, relative to the working directory"
+                description="The directory to get file content, relative to the working directory",
             ),
             "file_path": types.Schema(
-                type=types.Type.STRING,
-                description="The file path to get content from."
-            )
-        }
-    )
+                type=types.Type.STRING, description="The file path to get content from."
+            ),
+        },
+    ),
 )

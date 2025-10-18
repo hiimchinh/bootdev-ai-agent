@@ -38,7 +38,7 @@ available_functions = types.Tool(
 )
 
 
-def gen_content(messages):
+def gen_content(messages: list[types.Content]) -> None:
     count = 0
     while count < 20:
         count += 1
@@ -51,38 +51,59 @@ def gen_content(messages):
                 ),
             )
             # if return text break out of the loop
-            if res.text:
+            if hasattr(res, "text") and res.text:
                 print(res.text)
                 break
 
-            for candidate in res.candidates:
-                messages.append(candidate.content)
+            if hasattr(res, "candidates") and res.candidates is not None:
+                for candidate in res.candidates:
+                    if hasattr(candidate, "content") and candidate.content is not None:
+                        messages.append(candidate.content)
 
-            if res.function_calls:
+            if hasattr(res, "function_calls") and res.function_calls:
                 for function_call_part in res.function_calls:
                     function_call_result = call_function(function_call_part, is_verbose)
-                    func_call_response = function_call_result.parts[
-                        0
-                    ].function_response.response
-                    if not func_call_response:
+                    # Defensive: check function_call_result.parts is not None and has expected structure
+                    parts = getattr(function_call_result, "parts", None)
+                    if (
+                        not parts
+                        or not isinstance(parts, list)
+                        or len(parts) == 0
+                        or not hasattr(parts[0], "function_response")
+                    ):
+                        raise Exception(
+                            "Fatal exception. Function call result parts not found or invalid"
+                        )
+                    function_response = getattr(parts[0], "function_response", None)
+                    func_call_response = (
+                        getattr(function_response, "response", None)
+                        if function_response
+                        else None
+                    )
+                    if func_call_response is None:
                         raise Exception(
                             "Fatal exception. Function call response not found"
                         )
 
-                    messages.append(
-                        types.Content(role="user", parts=function_call_result.parts)
-                    )
+                    messages.append(types.Content(role="user", parts=parts))
                     if is_verbose:
                         print(f"-> {func_call_response}")
             else:
-                print(res.text)
+                if hasattr(res, "text"):
+                    print(res.text)
 
             if is_verbose:
                 print(f"User prompt: {user_prompt}")
-                print("Prompt tokens: " + str(res.usage_metadata.prompt_token_count))
-                print(
-                    "Response tokens: " + str(res.usage_metadata.candidates_token_count)
-                )
+                usage_metadata = getattr(res, "usage_metadata", None)
+                if usage_metadata:
+                    prompt_token_count = getattr(
+                        usage_metadata, "prompt_token_count", None
+                    )
+                    candidates_token_count = getattr(
+                        usage_metadata, "candidates_token_count", None
+                    )
+                    print("Prompt tokens: " + str(prompt_token_count))
+                    print("Response tokens: " + str(candidates_token_count))
         except Exception as e:
             print(f"Exception generate function caught: {e}")
 
